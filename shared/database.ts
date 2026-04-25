@@ -679,6 +679,7 @@ export type Database = {
       'conversation-type': 'parametric' | 'creative';
       'generation-status': 'pending' | 'success' | 'failure';
       incumbent_status: 'active' | 'retired';
+      step_judge_outcome: 'pass' | 'fail' | 'uncertain';
       mesh_file_type: 'glb' | 'stl' | 'obj' | 'fbx';
       mesh_model_type: 'quality' | 'fast';
       privacy_type: 'public' | 'private';
