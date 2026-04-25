@@ -9,7 +9,7 @@
 --   Columns:   cad_steps: judge_outcome, confidence_score
 --              cad_incumbents: embedding_model_id, embedding
 --   Indexes:   HNSW on cad_incumbents.embedding
---   Functions: match_cad_incumbents
+--   Functions: match_cad_incumbents (p_user_id + GRANT EXECUTE + search_path)
 -- =============================================================================
 
 -- ---------------------------------------------------------------------------
@@ -55,10 +55,11 @@ CREATE INDEX IF NOT EXISTS "idx_cad_incumbents_embedding_hnsw"
 -- ---------------------------------------------------------------------------
 
 -- match_cad_incumbents
--- Retrieves top candidates for a given query embedding, applying optional tag filters.
--- Returns the raw candidate pool. Application layer (Edge Function) is responsible
--- for computing composite scores using session weights.
+-- Retrieves top candidates for one user’s query embedding, optional tag filter (OR overlap).
+-- p_user_id is required: service_role bypasses RLS, so the caller must scope the tenant.
+-- Returns the raw candidate pool; Edge/app applies session vs balanced weights (Part 2).
 CREATE OR REPLACE FUNCTION "public"."match_cad_incumbents"(
+    "p_user_id" uuid,
     "query_embedding" vector(1536),
     "match_count" integer DEFAULT 10,
     "filter_tags" text[] DEFAULT NULL
@@ -80,10 +81,11 @@ RETURNS TABLE (
 )
 LANGUAGE "plpgsql"
 STABLE
+SET search_path TO 'public'
 AS $$
 BEGIN
     RETURN QUERY
-    SELECT 
+    SELECT
         i.id,
         i.retrieval_key,
         i.step_id,
@@ -98,19 +100,24 @@ BEGIN
         i.embedding,
         1 - (i.embedding <=> query_embedding) AS similarity
     FROM public.cad_incumbents i
-    -- Ensure we only match active incumbents. 
-    -- If exploration allows retired ones, this filter can be relaxed or parameterized.
-    WHERE i.status = 'active'
-      -- Apply tag filtering via the associated step if filter_tags is provided
+    WHERE i.user_id = p_user_id
+      AND i.status = 'active'
+      AND i.embedding IS NOT NULL
       AND (
           filter_tags IS NULL
           OR EXISTS (
-              SELECT 1 FROM public.cad_steps s 
-              WHERE s.id = i.step_id 
-              AND s.tags && filter_tags
+              SELECT 1 FROM public.cad_steps s
+              WHERE s.id = i.step_id
+                AND s.tags && filter_tags
           )
       )
     ORDER BY i.embedding <=> query_embedding
     LIMIT match_count;
 END;
 $$;
+
+COMMENT ON FUNCTION "public"."match_cad_incumbents"(uuid, vector(1536), integer, text[]) IS
+    'ANN candidate pool for one user; required p_user_id for service_role safety. filter_tags: OR (overlap).';
+
+GRANT EXECUTE ON FUNCTION "public"."match_cad_incumbents"(uuid, vector(1536), integer, text[])
+    TO authenticated, service_role;

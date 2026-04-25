@@ -611,6 +611,7 @@ export type Database = {
     Functions: {
       match_cad_incumbents: {
         Args: {
+          p_user_id: string;
           query_embedding: string;
           match_count?: number;
           filter_tags?: string[];

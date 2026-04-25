@@ -1,11 +1,12 @@
 -- =============================================================================
--- CAD trace memory — Part 1: Execution units & library roles
+-- CAD trace memory — Parts 1–4 (schema reference)
 -- =============================================================================
 -- This file is the CANONICAL REFERENCE definition. It is NOT applied directly.
--- See: supabase/migrations/20260424220000_cad_memory_part1.sql for the
--- runnable migration.
+-- See: supabase/migrations/20260424220000_cad_memory_part1.sql and
+--      supabase/migrations/20260424230000_cad_memory_parts_2_3_4.sql
+--      for runnable migrations.
 --
--- Concepts (from docs/glossary-cad-vector-memory.md §Part 1):
+-- Concepts (from docs/glossary-cad-vector-memory.md Part 1):
 --   Trace          — one end-to-end or partial recorded run toward a user goal
 --   Step/subgoal   — bounded milestone inside a trace; unit of embed/score/retrieve
 --   Candidate      — a completed (or partial) trace that might replace the incumbent
@@ -241,6 +242,7 @@ CREATE INDEX "idx_cad_incumbents_embedding_hnsw" ON public.cad_incumbents USING 
 -- ---------------------------------------------------------------------------
 
 CREATE OR REPLACE FUNCTION "public"."match_cad_incumbents"(
+    "p_user_id" uuid,
     "query_embedding" vector(1536),
     "match_count" integer DEFAULT 10,
     "filter_tags" text[] DEFAULT NULL
@@ -262,10 +264,11 @@ RETURNS TABLE (
 )
 LANGUAGE "plpgsql"
 STABLE
+SET search_path TO 'public'
 AS $$
 BEGIN
     RETURN QUERY
-    SELECT 
+    SELECT
         i.id,
         i.retrieval_key,
         i.step_id,
@@ -280,19 +283,27 @@ BEGIN
         i.embedding,
         1 - (i.embedding <=> query_embedding) AS similarity
     FROM public.cad_incumbents i
-    WHERE i.status = 'active'
+    WHERE i.user_id = p_user_id
+      AND i.status = 'active'
+      AND i.embedding IS NOT NULL
       AND (
           filter_tags IS NULL
           OR EXISTS (
-              SELECT 1 FROM public.cad_steps s 
-              WHERE s.id = i.step_id 
-              AND s.tags && filter_tags
+              SELECT 1 FROM public.cad_steps s
+              WHERE s.id = i.step_id
+                AND s.tags && filter_tags
           )
       )
     ORDER BY i.embedding <=> query_embedding
     LIMIT match_count;
 END;
 $$;
+
+COMMENT ON FUNCTION "public"."match_cad_incumbents"(uuid, vector(1536), integer, text[]) IS
+    'ANN candidate pool for one user; required p_user_id for service_role safety. filter_tags: OR (overlap).';
+
+GRANT EXECUTE ON FUNCTION "public"."match_cad_incumbents"(uuid, vector(1536), integer, text[])
+    TO authenticated, service_role;
 
 -- ---------------------------------------------------------------------------
 -- RLS Policies
