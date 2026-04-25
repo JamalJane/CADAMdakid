@@ -9,6 +9,190 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      cad_incumbents: {
+        Row: {
+          id: string;
+          retrieval_key: string;
+          step_id: string | null;
+          user_id: string;
+          status: Database['public']['Enums']['incumbent_status'];
+          write_score: number | null;
+          promoted_at: string;
+          replaced_at: string | null;
+          replacement_step_id: string | null;
+          metadata: Json;
+          embedding_model_id: string | null;
+          embedding: string | null;
+        };
+        Insert: {
+          id?: string;
+          retrieval_key: string;
+          step_id?: string | null;
+          user_id: string;
+          status?: Database['public']['Enums']['incumbent_status'];
+          write_score?: number | null;
+          promoted_at?: string;
+          replaced_at?: string | null;
+          replacement_step_id?: string | null;
+          metadata?: Json;
+          embedding_model_id?: string | null;
+          embedding?: string | null;
+        };
+        Update: {
+          id?: string;
+          retrieval_key?: string;
+          step_id?: string | null;
+          user_id?: string;
+          status?: Database['public']['Enums']['incumbent_status'];
+          write_score?: number | null;
+          promoted_at?: string;
+          replaced_at?: string | null;
+          replacement_step_id?: string | null;
+          metadata?: Json;
+          embedding_model_id?: string | null;
+          embedding?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'cad_incumbents_step_id_fkey';
+            columns: ['step_id'];
+            isOneToOne: false;
+            referencedRelation: 'cad_steps';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'cad_incumbents_replacement_step_id_fkey';
+            columns: ['replacement_step_id'];
+            isOneToOne: false;
+            referencedRelation: 'cad_steps';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      cad_steps: {
+        Row: {
+          id: string;
+          trace_id: string;
+          user_id: string;
+          subgoal_text: string;
+          subgoal_normalized: string | null;
+          featurescript_hash: string | null;
+          featurescript_code: string | null;
+          token_count: number;
+          turn_count: number;
+          latency_ms: number | null;
+          compile_result: Database['public']['Enums']['step_compile_result'];
+          judge_outcome:
+            | Database['public']['Enums']['step_judge_outcome']
+            | null;
+          confidence_score: number | null;
+          eligibility_status: Database['public']['Enums']['step_eligibility_status'];
+          tags: string[];
+          step_index: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          trace_id: string;
+          user_id: string;
+          subgoal_text: string;
+          subgoal_normalized?: string | null;
+          featurescript_hash?: string | null;
+          featurescript_code?: string | null;
+          token_count?: number;
+          turn_count?: number;
+          latency_ms?: number | null;
+          compile_result?: Database['public']['Enums']['step_compile_result'];
+          judge_outcome?:
+            | Database['public']['Enums']['step_judge_outcome']
+            | null;
+          confidence_score?: number | null;
+          eligibility_status?: Database['public']['Enums']['step_eligibility_status'];
+          tags?: string[];
+          step_index?: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          trace_id?: string;
+          user_id?: string;
+          subgoal_text?: string;
+          subgoal_normalized?: string | null;
+          featurescript_hash?: string | null;
+          featurescript_code?: string | null;
+          token_count?: number;
+          turn_count?: number;
+          latency_ms?: number | null;
+          compile_result?: Database['public']['Enums']['step_compile_result'];
+          judge_outcome?:
+            | Database['public']['Enums']['step_judge_outcome']
+            | null;
+          confidence_score?: number | null;
+          eligibility_status?: Database['public']['Enums']['step_eligibility_status'];
+          tags?: string[];
+          step_index?: number;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'cad_steps_trace_id_fkey';
+            columns: ['trace_id'];
+            isOneToOne: false;
+            referencedRelation: 'cad_traces';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      cad_traces: {
+        Row: {
+          id: string;
+          user_id: string;
+          conversation_id: string | null;
+          status: Database['public']['Enums']['trace_status'];
+          goal_text: string | null;
+          model_id: string | null;
+          raw_token_count: number;
+          turn_count: number;
+          started_at: string;
+          completed_at: string | null;
+          metadata: Json;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          conversation_id?: string | null;
+          status?: Database['public']['Enums']['trace_status'];
+          goal_text?: string | null;
+          model_id?: string | null;
+          raw_token_count?: number;
+          turn_count?: number;
+          started_at?: string;
+          completed_at?: string | null;
+          metadata?: Json;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          conversation_id?: string | null;
+          status?: Database['public']['Enums']['trace_status'];
+          goal_text?: string | null;
+          model_id?: string | null;
+          raw_token_count?: number;
+          turn_count?: number;
+          started_at?: string;
+          completed_at?: string | null;
+          metadata?: Json;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'cad_traces_conversation_id_fkey';
+            columns: ['conversation_id'];
+            isOneToOne: false;
+            referencedRelation: 'conversations';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       conversations: {
         Row: {
           created_at: string | null;
@@ -425,6 +609,28 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      match_cad_incumbents: {
+        Args: {
+          query_embedding: string;
+          match_count?: number;
+          filter_tags?: string[];
+        };
+        Returns: {
+          id: string;
+          retrieval_key: string;
+          step_id: string | null;
+          user_id: string;
+          status: Database['public']['Enums']['incumbent_status'];
+          write_score: number | null;
+          promoted_at: string;
+          replaced_at: string | null;
+          replacement_step_id: string | null;
+          metadata: Json;
+          embedding_model_id: string | null;
+          embedding: string | null;
+          similarity: number;
+        }[];
+      };
       credit_purchased_tokens: {
         Args: { p_amount: number; p_reference_id?: string; p_user_id: string };
         Returns: Json;
@@ -472,14 +678,18 @@ export type Database = {
     Enums: {
       'conversation-type': 'parametric' | 'creative';
       'generation-status': 'pending' | 'success' | 'failure';
+      incumbent_status: 'active' | 'retired';
       mesh_file_type: 'glb' | 'stl' | 'obj' | 'fbx';
       mesh_model_type: 'quality' | 'fast';
       privacy_type: 'public' | 'private';
       prompt_type: 'mesh' | 'image' | 'chat';
+      step_compile_result: 'success' | 'failure' | 'uncertain';
+      step_eligibility_status: 'pending' | 'eligible' | 'ineligible';
       'stripe-level': 'pro' | 'standard';
       subscription_level: 'pro' | 'standard' | 'free';
       token_operation_type: 'mesh' | 'parametric' | 'chat' | 'refund';
       token_source_type: 'subscription' | 'purchased';
+      trace_status: 'running' | 'completed' | 'abandoned';
     };
     CompositeTypes: {
       user_data: {
@@ -620,14 +830,18 @@ export const Constants = {
     Enums: {
       'conversation-type': ['parametric', 'creative'],
       'generation-status': ['pending', 'success', 'failure'],
+      incumbent_status: ['active', 'retired'],
       mesh_file_type: ['glb', 'stl', 'obj', 'fbx'],
       mesh_model_type: ['quality', 'fast'],
       privacy_type: ['public', 'private'],
       prompt_type: ['mesh', 'image', 'chat'],
+      step_compile_result: ['success', 'failure', 'uncertain'],
+      step_eligibility_status: ['pending', 'eligible', 'ineligible'],
       'stripe-level': ['pro', 'standard'],
       subscription_level: ['pro', 'standard', 'free'],
       token_operation_type: ['mesh', 'parametric', 'chat', 'refund'],
       token_source_type: ['subscription', 'purchased'],
+      trace_status: ['running', 'completed', 'abandoned'],
     },
   },
 } as const;
